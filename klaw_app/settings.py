@@ -21,12 +21,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 import os
 # SECURITY WARNING: keep the secret key used in production secret!
 #SECRET_KEY = "django-insecure-mqktx_(*-54eiz5@$d3&ke=ifm2rx_df&4(2u&tz(pxn6pn$uo"
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'default-secret-key-for-dev')
+SECRET_KEY = os.getenv('SECRET_KEY', '^bjzq+3+i%r=t%q9rr^w0r@7lm=i2o-6p7by8&)u&04g$')
+DEBUG = True  # Set this to False for production
+#DATABASE_URL = "mongodb+srv://igniteprojects02:igniteadmin@flaws.9pgqc.mongodb.net/klaw_db"
+ALLOWED_HOSTS = ["*"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['Klaw_app.onrender.com']
+#ALLOWED_HOSTS = ['Klaw.onrender.com']
 
 
 # Application definition
@@ -91,13 +94,25 @@ DATABASES = {
         'ENGINE': 'djongo',  # Use Djongo as the engine
         'NAME': 'klaw_db',  # Your database name in MongoDB Atlas
         'CLIENT': {
-            'host': 'mongodb+srv://igniteprojects02:igniteadmin@flaws.9pgqc.mongodb.net/klaw_db',  # Your MongoDB Atlas connection string
+            'host': 'mongodb+srv://igniteprojects02:igniteadmin@flaws.9pgqc.mongodb.net/flawsapp?retryWrites=true&w=majority&ssl=true&appName=klaw_app',  # Your MongoDB Atlas connection string
             'retryWrites': True,
             'w': 'majority',
         },
     }
 }
 
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'djongo',
+#         'NAME': os.getenv('DATABASE_NAME', 'klaw_db'),  # Default to 'klaw_db' if not set
+#         'CLIENT': {
+#             'host': os.getenv('DATABASE_URL', 'mongodb+srv://igniteprojects02:igniteadmin@flaws.9pgqc.mongodb.net/klaw_db'),  # Remove the extra space at the end
+#             'retryWrites': True,
+#             'w': 'majority',
+#         },
+#     }
+# }
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -163,7 +178,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 import os
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
