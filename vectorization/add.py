@@ -6,6 +6,8 @@ from datetime import datetime
 
 import filetype
 
+
+
   
 def add(dbname,file):
 
@@ -23,34 +25,26 @@ def add(dbname,file):
 
     # Guess the file type using the filetype library
     kind = filetype.guess(file)
+    #print(f"Guessed kind: {kind}")
+
+    # Check if it's a text file based on extension
+    if file.lower().endswith('.txt'):
+        print("File recognized as a text file based on its extension.")
+        # Proceed with reading the text file
+        with open(file, 'r') as f:
+            text_data = f.read()
+        print("Text data extracted.")
     
-    
-    # Check for PDF and text file types
-    if kind.extension == 'pdf':
+    elif kind.extension == 'pdf':
         print("file found to be pdf")
 
         text_data = extract_text_from_pdf(file)
 
         print("pdf data extracted")
-    elif kind.mime == 'text/plain':
-        print("file found to be txt")
 
-        try:
-            # Open the file in read mode
-            with open(file, 'r') as files:
-                # Read the contents of the file
-                text_data = files.read()
-        except FileNotFoundError:
-            return "Error: The file was not found."
-        except IOError:
-            return "Error: An I/O error occurred."
-
-
-        print("txt data extracted")
     
     else:
         print("No accepted file type")
-
 
 
 
@@ -75,7 +69,10 @@ def add(dbname,file):
         ids=[f"{dbname}_{formatted_time}_{i}" for i in range(len(chunks))]  #assigns unique identifiers to each chunks of document being added.
     )
     print("Created the vectoriezed data successfully")
-    return "Success"
+
+
+    return "success"
+
 
 
 
