@@ -27,7 +27,7 @@ DEBUG = True  # Set this to False for production
 ALLOWED_HOSTS = ["*"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+#DEBUG = False
 
 #ALLOWED_HOSTS = ['Klaw.onrender.com']
 
