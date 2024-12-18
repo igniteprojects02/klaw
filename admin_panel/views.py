@@ -160,21 +160,19 @@ class AddCourseView(APIView):
 from bson import ObjectId
 class ToggleCourseStatusView(APIView):
     permission_classes = [IsAuthenticated]  # Require login
+
     def post(self, request, pk):
         try:
             # Convert pk to ObjectId explicitly
             course = Course.objects.get(_id=ObjectId(pk))
             
-            # If you want to delete the course
+            # Delete the course if requested
             if 'delete' in request.data and request.data['delete']:
                 course.delete()
                 return Response({'detail': 'Course deleted successfully.'}, status=status.HTTP_200_OK)
 
             # Toggle between "Draft" and "Published"
-            if course.status == 'draft':
-                course.status = 'published'
-            else:
-                course.status = 'draft'
+            course.status = 'published' if course.status == 'draft' else 'draft'
             course.save()
             return Response({'status': course.status}, status=status.HTTP_200_OK)
         except Course.DoesNotExist:
@@ -188,16 +186,20 @@ class ToggleCourseStatusView(APIView):
 #         except Course.DoesNotExist:
 #             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 
-class SubjectListView(APIView):
-    permission_classes = [IsAuthenticated]  # Require login
+class GetCoursesView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is logged in
+
     def get(self, request):
-        # Fetch both draft and published courses
-        courses = Course.objects.all()  # Fetch all courses, both draft and published
-        
-        # Serialize the course data
+        # Get the 'status' parameter from the query string
+        status_filter = request.query_params.get('status')
+        if status_filter not in ['draft', 'published']:
+            return Response({"error": "Invalid status filter. Use 'draft' or 'published'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Filter courses based on status
+        courses = Course.objects.filter(status=status_filter)
         serializer = CourseSerializer(courses, many=True)
-        
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 from .models import Contact
 from .serializers import ContactSerializer
@@ -264,49 +266,57 @@ class ContactFormView(APIView):
 #         return f"Vector data for {file.name}"
 
 
+
+# Edit course details - restricted to draft courses
+
 class EditCourseView(APIView):
     permission_classes = [IsAuthenticated]  # Require login
 
-    def put(self, request, pk):
+    def patch(self, request, pk):
         try:
             # Fetch the course object by ID
             course = Course.objects.get(_id=ObjectId(pk))
 
-            # Partial updates for fields
+            # Allow editing only if the course is in "Draft" status
+            if course.status != 'draft':
+                return Response({"error": "Editing is only allowed for draft courses."}, status=status.HTTP_403_FORBIDDEN)
+
+            # Handle partial updates for course details
             data = request.data
-            course.title = data.get('title', course.title)
-            course.description = data.get('description', course.description)
-            course.university = data.get('university', course.university)
-            course.status = data.get('status', course.status)
+            serializer = CourseSerializer(course, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
 
-            # Handle file uploads
-            new_files = request.FILES.getlist('file_input')
-            new_file_paths = []
-            vectorization_statuses = course.vectorized_data.get("details", [])
+                # Handle file uploads and vectorization
+                new_files = request.FILES.getlist('file_input')
+                new_file_paths = []
+                vectorization_statuses = course.vectorized_data.get("details", [])
 
-            for file in new_files:
-                # Save new file to disk
-                fs = FileSystemStorage(location='media/')
-                filename = fs.save(file.name, file)
-                file_path = fs.path(filename)
-                new_file_paths.append(file_path)
+                for file in new_files:
+                    # Save the new file
+                    fs = FileSystemStorage(location='media/')
+                    filename = fs.save(file.name, file)
+                    file_path = fs.path(filename)
+                    new_file_paths.append(file_path)
 
-                # Perform vectorization
-                dbname = f"course_{course.course_code}"
-                try:
-                    vectorization_status = add(dbname, file_path)
-                    vectorization_statuses.append({"file": file.name, "status": "success", "details": vectorization_status})
-                except Exception as e:
-                    vectorization_statuses.append({"file": file.name, "status": "failed", "details": str(e)})
+                    # Perform vectorization only on the new files
+                    dbname = f"course_{course.course_code}"
+                    try:
+                        vectorization_status = add(dbname, file_path)  # Assuming 'add' handles the vectorization
+                        vectorization_statuses.append({"file": file.name, "status": "success", "details": vectorization_status})
+                    except Exception as e:
+                        vectorization_statuses.append({"file": file.name, "status": "failed", "details": str(e)})
 
-            # Update file paths and vectorized data
-            course.file_input.extend(new_file_paths)
-            course.vectorized_data = {"status": "completed", "details": vectorization_statuses}
+                # Update file paths and vectorization status
+                course.file_input.extend(new_file_paths)
+                course.vectorized_data = {"status": "completed", "details": vectorization_statuses}
 
-            # Save course object
-            course.save()
+                # Save course object
+                course.save()
 
-            return Response({"detail": "Course updated successfully.", "course": CourseSerializer(course).data}, status=status.HTTP_200_OK)
+                return Response({"detail": "Course updated successfully.", "course": CourseSerializer(course).data}, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         except Course.DoesNotExist:
             return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
